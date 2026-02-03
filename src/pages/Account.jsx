@@ -1,12 +1,12 @@
-
-import { supabase } from "../lib/supabase";
+import { useAuth } from "../auth/AuthProvider";
 
 export default function Account() {
+  const { user } = useAuth();
+
   return (
     <div style={{ padding: 40 }}>
-      <button onClick={() => supabase.auth.signOut()}>
-        Sign Out
-      </button>
+      <h2>Account</h2>
+      <p>Email: {user?.email}</p>
     </div>
   );
 }

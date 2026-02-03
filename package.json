@@ -1,4 +1,3 @@
-
 {
   "name": "peptidepals",
   "private": true,
@@ -11,13 +10,14 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "@stripe/stripe-js": "^2.2.0",
+    "@stripe/stripe-js": "^2.4.0",
+    "stripe": "^14.25.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0"
+    "react-router-dom": "^6.22.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.0",
-    "vite": "^5.0.8"
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.4.2"
   }
 }

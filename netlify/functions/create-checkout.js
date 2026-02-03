@@ -22,16 +22,17 @@ export async function handler(event) {
       return { statusCode: 400, body: "Missing fields" };
     }
 
+    // 🔒 ONLY USE website_cents
     const { data: pricing, error } = await supabase
       .from("pricing")
-      .select("price_cents")
+      .select("website_cents")
       .eq("peptide_id", peptide_id)
       .eq("mg", mg)
       .eq("vials", vials)
       .single();
 
     if (error || !pricing) {
-      return { statusCode: 404, body: "Price not found" };
+      return { statusCode: 404, body: "Pricing not found" };
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -42,9 +43,9 @@ export async function handler(event) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: `Peptide ${mg}mg × ${vials} vials`
+              name: `Peptide ${mg}mg × ${vials} vial${vials > 1 ? "s" : ""}`
             },
-            unit_amount: pricing.price_cents
+            unit_amount: pricing.website_cents
           },
           quantity: 1
         }

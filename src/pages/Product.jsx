@@ -7,25 +7,43 @@ export default function Product() {
   const { id } = useParams();
   const { user } = useAuth();
 
-  const [mg, setMg] = useState(5);
+  const [mg, setMg] = useState(10);
   const [vials, setVials] = useState(1);
-  const [price, setPrice] = useState(null);
+  const [pricing, setPricing] = useState([]);
+  const [currentPrice, setCurrentPrice] = useState(null);
 
   useEffect(() => {
-    async function loadPrice() {
+    async function loadPricing() {
       const { data } = await supabase
         .from("pricing")
-        .select("price_cents")
+        .select("vials, website_cents")
         .eq("peptide_id", id)
-        .eq("mg", mg)
-        .eq("vials", vials)
-        .single();
+        .eq("mg", mg);
 
-      setPrice(data?.price_cents ?? null);
+      setPricing(data || []);
     }
 
-    loadPrice();
-  }, [id, mg, vials]);
+    loadPricing();
+  }, [id, mg]);
+
+  useEffect(() => {
+    const match = pricing.find(p => p.vials === vials);
+    setCurrentPrice(match?.website_cents ?? null);
+  }, [pricing, vials]);
+
+  function getBaselineUnitPrice() {
+    const oneVial = pricing.find(p => p.vials === 1);
+    return oneVial ? oneVial.website_cents : null;
+  }
+
+  function getSavingsPercent() {
+    const base = getBaselineUnitPrice();
+    if (!base || !currentPrice || vials === 1) return null;
+
+    const baseTotal = base * vials;
+    const savings = ((baseTotal - currentPrice) / baseTotal) * 100;
+    return Math.round(savings);
+  }
 
   async function handleCheckout() {
     const res = await fetch("/.netlify/functions/create-checkout", {
@@ -44,7 +62,7 @@ export default function Product() {
   }
 
   return (
-    <div style={{ padding: 40 }}>
+    <div style={{ padding: 40, maxWidth: 500 }}>
       <h2>Peptide</h2>
 
       <div>
@@ -52,29 +70,43 @@ export default function Product() {
         <select value={mg} onChange={e => setMg(Number(e.target.value))}>
           <option value={5}>5mg</option>
           <option value={10}>10mg</option>
-          <option value={15}>15mg</option>
+          <option value={20}>20mg</option>
         </select>
       </div>
 
-      <div>
+      <div style={{ marginTop: 20 }}>
         <label>Vials:</label>
         <select value={vials} onChange={e => setVials(Number(e.target.value))}>
-          <option value={1}>1</option>
-          <option value={5}>5</option>
-          <option value={10}>10</option>
+          <option value={1}>1 vial</option>
+          <option value={5}>5 vials</option>
+          <option value={10}>10 vials</option>
         </select>
       </div>
 
-      <p>
-        Price:{" "}
-        {price ? `$${(price / 100).toFixed(2)}` : "Not available"}
-      </p>
+      <div style={{ marginTop: 20 }}>
+        <strong>
+          Price:{" "}
+          {currentPrice
+            ? `$${(currentPrice / 100).toFixed(2)}`
+            : "Unavailable"}
+        </strong>
+      </div>
 
-      <button onClick={handleCheckout} disabled={!price}>
+      {getSavingsPercent() !== null && (
+        <div style={{ marginTop: 10, color: "green", fontWeight: "bold" }}>
+          Save {getSavingsPercent()}% vs single vials
+        </div>
+      )}
+
+      <button
+        style={{ marginTop: 30 }}
+        onClick={handleCheckout}
+        disabled={!currentPrice}
+      >
         Buy Now
       </button>
 
-      <p style={{ marginTop: 20 }}>
+      <p style={{ marginTop: 30, fontSize: 12 }}>
         Research Use Only. Not for human consumption.
       </p>
     </div>

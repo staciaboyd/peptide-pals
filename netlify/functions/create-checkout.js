@@ -1,27 +1,49 @@
-
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-export async function handler(event) {
-  const body = new URLSearchParams(event.body);
-  const peptide = body.get("peptide_id");
-  const mg = body.get("mg");
-  const vials = body.get("vials");
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY
+);
 
-  const price = 5000; // placeholder, connect Supabase pricing table
+export async function handler(event) {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
+  }
+
+  const body = JSON.parse(event.body);
+  const { peptide_id, mg, vials, user_id } = body;
+
+  if (!peptide_id || !mg || !vials || !user_id) {
+    return { statusCode: 400, body: "Missing fields" };
+  }
+
+  // Lookup price securely
+  const { data: pricing, error } = await supabase
+    .from("pricing")
+    .select("price_cents")
+    .eq("peptide_id", peptide_id)
+    .eq("mg", mg)
+    .eq("vials", vials)
+    .single();
+
+  if (error || !pricing) {
+    return { statusCode: 404, body: "Price not found" };
+  }
 
   const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
     mode: "payment",
+    payment_method_types: ["card"],
     line_items: [
       {
         price_data: {
           currency: "usd",
           product_data: {
-            name: `Peptide ${peptide} - ${mg}mg x ${vials}`
+            name: `Peptide ${mg}mg x ${vials} vials`
           },
-          unit_amount: price
+          unit_amount: pricing.price_cents
         },
         quantity: 1
       }
@@ -31,7 +53,7 @@ export async function handler(event) {
   });
 
   return {
-    statusCode: 303,
-    headers: { Location: session.url }
+    statusCode: 200,
+    body: JSON.stringify({ url: session.url })
   };
 }

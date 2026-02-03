@@ -1,95 +1,65 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
+import Header from "../components/Header";
 
 export default function Home() {
   const [peptides, setPeptides] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadPeptides() {
-      const { data } = await supabase
-        .from("peptides")
-        .select("id, name, short_description")
-        .eq("active", true)
-        .order("name");
-
-      setPeptides(data || []);
-      setLoading(false);
-    }
-
-    loadPeptides();
+    supabase
+      .from("peptides")
+      .select("id, name, short_description, image_url")
+      .eq("active", true)
+      .order("name")
+      .then(({ data }) => setPeptides(data || []));
   }, []);
 
-  if (loading) {
-    return <p style={{ padding: 40 }}>Loading products…</p>;
-  }
-
   return (
-    <div style={{ padding: 40 }}>
-      <h1>PeptidePals</h1>
-
-      <p style={{ marginBottom: 30 }}>
-        Premium research peptides available in multiple concentrations
-        and vial configurations.
-      </p>
+    <>
+      <Header />
 
       <div
         style={{
+          padding: "20px 40px 60px",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 24
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: 30
         }}
       >
-        {peptides.map(peptide => (
+        {peptides.map(p => (
           <Link
-            key={peptide.id}
-            to={`/product/${peptide.id}`}
+            key={p.id}
+            to={`/product/${p.id}`}
             style={{
-              textDecoration: "none",
-              color: "inherit",
-              border: "1px solid #ddd",
-              borderRadius: 8,
+              background: "var(--card)",
+              borderRadius: 16,
               padding: 20,
-              background: "#fff",
-              transition: "transform 0.15s ease, box-shadow 0.15s ease"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 4px 12px rgba(0,0,0,0.08)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = "none";
-              e.currentTarget.style.boxShadow = "none";
+              boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
+              transition: "transform 0.2s"
             }}
           >
-            <h3 style={{ marginBottom: 10 }}>
-              {peptide.name}
-            </h3>
+            <img
+              src={p.image_url}
+              alt={p.name}
+              style={{ width: "100%", marginBottom: 15 }}
+            />
 
-            <p style={{ fontSize: 14, color: "#555" }}>
-              {peptide.short_description ||
-                "High-quality research peptide."}
+            <h3>{p.name}</h3>
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>
+              {p.short_description}
             </p>
 
-            <div
-              style={{
-                marginTop: 15,
-                fontSize: 13,
-                color: "#0070f3",
-                fontWeight: "bold"
-              }}
-            >
+            <div style={{ marginTop: 12, color: "var(--accent)" }}>
               View options →
             </div>
           </Link>
         ))}
       </div>
 
-      <p style={{ marginTop: 40, fontSize: 12 }}>
+      <footer style={{ textAlign: "center", paddingBottom: 40, fontSize: 12 }}>
         Research Use Only. Not for human consumption.
-      </p>
-    </div>
+      </footer>
+    </>
   );
 }

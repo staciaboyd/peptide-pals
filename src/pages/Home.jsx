@@ -1,65 +1,95 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
-import Header from "../components/Header";
 
 export default function Home() {
-  const [peptides, setPeptides] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("peptides")
-      .select("id, name, short_description, image_url")
-      .eq("active", true)
-      .order("name")
-      .then(({ data }) => setPeptides(data || []));
+    loadProducts();
   }, []);
 
-  return (
-    <>
-      <Header />
+  async function loadProducts() {
+    const { data, error } = await supabase
+      .from("peptides")
+      .select("id, name, description, image_url")
+      .order("name");
 
-      <div
-        style={{
-          padding: "20px 40px 60px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: 30
-        }}
-      >
-        {peptides.map(p => (
-          <Link
-            key={p.id}
-            to={`/product/${p.id}`}
-            style={{
-              background: "var(--card)",
-              borderRadius: 16,
-              padding: 20,
-              boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-              transition: "transform 0.2s"
-            }}
-          >
+    if (!error) setProducts(data || []);
+    setLoading(false);
+  }
+
+  if (loading) return <p style={{ padding: 32 }}>Loading…</p>;
+
+  return (
+    <div style={styles.container}>
+      <h1 style={styles.title}>PeptidePals</h1>
+
+      <div style={styles.grid}>
+        {products.map((p) => (
+          <div key={p.id} style={styles.card}>
             <img
-              src={p.image_url}
+              src={p.image_url || "/images/placeholder.png"}
               alt={p.name}
-              style={{ width: "100%", marginBottom: 15 }}
+              style={styles.image}
+              onError={(e) => (e.target.src = "/images/placeholder.png")}
             />
 
             <h3>{p.name}</h3>
-            <p style={{ color: "var(--muted)", fontSize: 14 }}>
-              {p.short_description}
+
+            <p style={styles.desc}>
+              {p.description || "Research peptide available for laboratory study."}
             </p>
 
-            <div style={{ marginTop: 12, color: "var(--accent)" }}>
+            <Link to={`/product/${p.id}`} style={styles.link}>
               View options →
-            </div>
-          </Link>
+            </Link>
+          </div>
         ))}
       </div>
 
-      <footer style={{ textAlign: "center", paddingBottom: 40, fontSize: 12 }}>
+      <p style={styles.disclaimer}>
         Research Use Only. Not for human consumption.
-      </footer>
-    </>
+      </p>
+    </div>
   );
 }
+
+const styles = {
+  container: { padding: 40 },
+  title: { fontSize: 32, marginBottom: 30 },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+    gap: 28,
+  },
+  card: {
+    background: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    textAlign: "center",
+    boxShadow: "0 12px 28px rgba(0,0,0,0.08)",
+  },
+  image: {
+    width: "100%",
+    height: 220,
+    objectFit: "contain",
+    marginBottom: 12,
+  },
+  desc: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 12,
+  },
+  link: {
+    fontWeight: 600,
+    textDecoration: "none",
+    color: "#2563eb",
+  },
+  disclaimer: {
+    marginTop: 40,
+    fontSize: 13,
+    color: "#555",
+  },
+};

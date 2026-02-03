@@ -3,93 +3,71 @@ import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
 
 export default function Home() {
-  const [products, setProducts] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadProducts();
+    (async () => {
+      const { data: peptides } = await supabase
+        .from("peptides")
+        .select("id,name,description,image_url")
+        .order("name");
+
+      const { data: pricing } = await supabase
+        .from("pricing")
+        .select("peptide_id,mg,vials,price_cents")
+        .eq("active", true);
+
+      // compute max savings per peptide
+      const savingsById = {};
+      for (const p of pricing || []) {
+        const key = `${p.peptide_id}:${p.mg}`;
+        savingsById[key] ??= {};
+        savingsById[key][p.vials] = p.price_cents;
+      }
+      const maxSave = {};
+      Object.entries(savingsById).forEach(([k, tiers]) => {
+        if (tiers[1] && tiers[10]) {
+          const base = tiers[1] * 10;
+          const save = Math.round(((base - tiers[10]) / base) * 100);
+          const pid = k.split(":")[0];
+          maxSave[pid] = Math.max(maxSave[pid] ?? 0, save);
+        }
+      });
+
+      setRows((peptides || []).map(p => ({ ...p, save: maxSave[p.id] })));
+      setLoading(false);
+    })();
   }, []);
-
-  async function loadProducts() {
-    const { data, error } = await supabase
-      .from("peptides")
-      .select("id, name, description, image_url")
-      .order("name");
-
-    if (!error) setProducts(data || []);
-    setLoading(false);
-  }
 
   if (loading) return <p style={{ padding: 32 }}>Loading…</p>;
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>PeptidePals</h1>
-
-      <div style={styles.grid}>
-        {products.map((p) => (
-          <div key={p.id} style={styles.card}>
+    <div style={{ padding: 40 }}>
+      <h1>PeptidePals</h1>
+      <div style={grid}>
+        {rows.map(p => (
+          <div key={p.id} style={card}>
             <img
               src={p.image_url || "/images/placeholder.png"}
               alt={p.name}
-              style={styles.image}
-              onError={(e) => (e.target.src = "/images/placeholder.png")}
+              style={img}
+              onError={e => (e.currentTarget.src = "/images/placeholder.png")}
             />
-
             <h3>{p.name}</h3>
-
-            <p style={styles.desc}>
-              {p.description || "Research peptide available for laboratory study."}
-            </p>
-
-            <Link to={`/product/${p.id}`} style={styles.link}>
-              View options →
-            </Link>
+            <p style={{ color: "#555", fontSize: 14 }}>{p.description}</p>
+            {p.save && <span style={badge}>Save up to {p.save}%</span>}
+            <Link to={`/product/${p.id}`} style={link}>View options →</Link>
           </div>
         ))}
       </div>
-
-      <p style={styles.disclaimer}>
-        Research Use Only. Not for human consumption.
-      </p>
+      <p style={{ marginTop: 40, fontSize: 12 }}>Research Use Only. Not for human consumption.</p>
     </div>
   );
 }
 
-const styles = {
-  container: { padding: 40 },
-  title: { fontSize: 32, marginBottom: 30 },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-    gap: 28,
-  },
-  card: {
-    background: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    textAlign: "center",
-    boxShadow: "0 12px 28px rgba(0,0,0,0.08)",
-  },
-  image: {
-    width: "100%",
-    height: 220,
-    objectFit: "contain",
-    marginBottom: 12,
-  },
-  desc: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 12,
-  },
-  link: {
-    fontWeight: 600,
-    textDecoration: "none",
-    color: "#2563eb",
-  },
-  disclaimer: {
-    marginTop: 40,
-    fontSize: 13,
-    color: "#555",
-  },
-};
+const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 28 };
+const card = { background: "#fff", borderRadius: 16, padding: 20, boxShadow: "0 12px 28px rgba(0,0,0,.08)" };
+const img = { width: "100%", height: 220, objectFit: "contain", marginBottom: 12 };
+const badge = { display: "inline-block", background: "#16a34a", color: "#fff", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, marginBottom: 8 };
+const link = { display: "inline-block", marginTop: 8, color: "#2563eb", fontWeight: 700, textDecoration: "none" };

@@ -1,11 +1,9 @@
 export default function Success() {
   return (
-    <div style={{ padding: 40 }}>
-      <h2>Payment Successful</h2>
-      <p>Your order has been received.</p>
-      <p>
-        A confirmation email from Stripe has been sent.
-      </p>
+    <div style={{ padding: 60, textAlign: "center" }}>
+      <h1>Order confirmed 🎉</h1>
+      <p>You’ll receive a confirmation email shortly.</p>
+      <a href="/" style={{ color: "#2563eb", fontWeight: 700 }}>Return home</a>
     </div>
   );
 }
